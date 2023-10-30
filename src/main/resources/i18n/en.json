@@ -1,0 +1,10 @@
+{
+  "SIDEBAR": {
+    "TasmotaDeviceEntity": "Tasmota"
+  },
+  "field": {
+    "telePeriod": "Telemetry period",
+    "uptime": "Uptime",
+    "bootCount": "Boot count"
+  }
+}

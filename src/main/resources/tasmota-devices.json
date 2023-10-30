@@ -1,0 +1,21 @@
+{
+  "version": "1",
+  "devices": [
+  ],
+  "endpoints": [
+    {
+      "name": "LoadAvg",
+      "icon": "fas fa-microchip",
+      "iconColor": "#C41B31",
+      "min": 0,
+      "max": 100,
+      "type": "number",
+      "path": "LoadAvg"
+    },
+    {
+      "name": "linkquality",
+      "type": "number",
+      "path": "Wifi/RSSI"
+    }
+  ]
+}
