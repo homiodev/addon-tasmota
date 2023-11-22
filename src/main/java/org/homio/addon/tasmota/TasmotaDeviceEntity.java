@@ -24,6 +24,7 @@ import org.homio.api.entity.device.DeviceBaseEntity;
 import org.homio.api.entity.device.DeviceEndpointsBehaviourContract;
 import org.homio.api.entity.version.HasFirmwareVersion;
 import org.homio.api.model.ActionResponseModel;
+import org.homio.api.model.WebAddress;
 import org.homio.api.model.device.ConfigDeviceDefinition;
 import org.homio.api.model.endpoint.DeviceEndpoint;
 import org.homio.api.service.EntityService;
@@ -60,7 +61,7 @@ import org.jetbrains.annotations.Nullable;
 public final class TasmotaDeviceEntity extends DeviceBaseEntity implements
     DeviceEndpointsBehaviourContract,
     HasFirmwareVersion,
-    EntityService<TasmotaDeviceService, TasmotaDeviceEntity> {
+    EntityService<TasmotaDeviceService> {
 
     public static final String PREFIX = "tasmota";
 
@@ -88,14 +89,11 @@ public final class TasmotaDeviceEntity extends DeviceBaseEntity implements
     }
 
     @UIField(order = 100, hideOnEmpty = true, type = UIFieldType.HTML, hideInEdit = true)
-    public String getIpAddress() {
+    public WebAddress getIpAddress() {
         return optService().map(service -> {
             String ipAddress = service.getAttributes().path("StatusNET").path("IPAddress").asText();
             if (StringUtils.isNotEmpty(ipAddress)) {
-                return """
-                    <i class="fas fa-globe" style="color: #3A7EC4"></i>
-                    <a target="_blank" style="margin-left: 5px" href="http://%s">%s</a>"""
-                    .formatted(ipAddress, ipAddress);
+                return new WebAddress(ipAddress);
             }
             return null;
         }).orElse(null);

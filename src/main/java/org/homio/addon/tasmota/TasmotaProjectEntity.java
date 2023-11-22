@@ -41,7 +41,7 @@ import org.jetbrains.annotations.Nullable;
 @Entity
 @UISidebarChildren(icon = TASMOTA_ICON, color = TASMOTA_COLOR)
 public class TasmotaProjectEntity extends MicroControllerBaseEntity
-    implements EntityService<TasmotaProjectService, TasmotaProjectEntity>,
+    implements EntityService<TasmotaProjectService>,
     HasStatusAndMsg, HasEntityLog {
 
     @Override
@@ -109,7 +109,7 @@ public class TasmotaProjectEntity extends MicroControllerBaseEntity
 
     @Override
     public long getEntityServiceHashCode() {
-        return getJsonDataHashCode("mqtt", "start");
+        return getJsonDataHashCode("mqtt");
     }
 
     @UIField(order = 500, type = UIFieldType.Chips)

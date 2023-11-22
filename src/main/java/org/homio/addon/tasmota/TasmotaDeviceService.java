@@ -76,7 +76,7 @@ public class TasmotaDeviceService extends ServiceInstance<TasmotaDeviceEntity> {
     }
 
     @Override
-    public void destroy(boolean forRestart) throws Exception {
+    public void destroy(boolean forRestart, Exception ex) throws Exception {
         downLinkQualityToZero();
     }
 

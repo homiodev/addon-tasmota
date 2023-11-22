@@ -1,4 +1,7 @@
 {
+  "WORKSPACE": {
+    "tasmota": "Tasmota"
+  },
   "SIDEBAR": {
     "TasmotaDeviceEntity": "Tasmota"
   },

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class Scratch3TasmotaBlocks extends Scratch3BaseDeviceBlocks {
 
-    public Scratch3TasmotaBlocks(Context context, TasmotaEntrypoint TasmotaEntrypoint) {
-        super(TASMOTA_COLOR, context, TasmotaEntrypoint, TasmotaDeviceEntity.PREFIX);
+    public Scratch3TasmotaBlocks(Context context, TasmotaEntrypoint entrypoint) {
+        super(TASMOTA_COLOR, context, entrypoint, TasmotaDeviceEntity.PREFIX);
     }
 }

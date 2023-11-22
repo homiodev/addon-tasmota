@@ -3,11 +3,7 @@ package org.homio.addon.tasmota;
 import static org.homio.addon.tasmota.TasmotaEntrypoint.TASMOTA_COLOR;
 import static org.homio.addon.tasmota.TasmotaEntrypoint.TASMOTA_ICON;
 import static org.homio.api.model.endpoint.DeviceEndpoint.ENDPOINT_LAST_SEEN;
-import static org.homio.api.util.CommonUtils.getErrorMessage;
-import static org.homio.api.util.JsonUtils.OBJECT_MAPPER;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.pivovarit.function.ThrowingBiConsumer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -18,7 +14,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Level;
 import org.homio.api.Context;
 import org.homio.api.ContextService.MQTTEntityService;
 import org.homio.api.model.Icon;
@@ -100,7 +95,7 @@ public class TasmotaProjectService extends ServiceInstance<TasmotaProjectEntity>
     }
 
     @Override
-    public void destroy(boolean forRestart) {
+    public void destroy(boolean forRestart, Exception ex) {
         this.dispose(null);
     }
 
@@ -118,68 +113,69 @@ public class TasmotaProjectService extends ServiceInstance<TasmotaProjectEntity>
         existedDevices = context.db().findAll(TasmotaDeviceEntity.class)
                                 .stream()
                                 .collect(Collectors.toMap(TasmotaDeviceEntity::getIeeeAddress, t -> t));
-        addMqttTopicListener((topic, payload) -> {
-            MatchDeviceData data = findDevice(topic);
-            if (data != null) {
-                data.entity.getService().getEndpoints().get(ENDPOINT_LAST_SEEN)
-                           .setValue(new DecimalType(System.currentTimeMillis()), true);
+        mqttEntityService.addPayloadListener(Set.of("tele/#", "stat/#", "cmnd/#", "+/tele/#", "+/stat/#", "+/cmnd/#"),
+            "tasmota", entityID, log, (topic, payload) -> {
+                MatchDeviceData data = findDevice(topic);
+                if (data != null) {
+                    data.entity.getService().getEndpoints().get(ENDPOINT_LAST_SEEN)
+                               .setValue(new DecimalType(System.currentTimeMillis()), true);
 
-                if (topic.endsWith("LWT")) {
-                    String msg = payload.get("raw").asText("Offline");
-                    data.entity.getService().put("LWT", msg);
-                    if ("Online".equals(msg)) {
-                        initialQuery(data.entity);
+                    if (topic.endsWith("LWT")) {
+                        String msg = payload.get("raw").asText("Offline");
+                        data.entity.getService().put("LWT", msg);
+                        if ("Online".equals(msg)) {
+                            initialQuery(data.entity);
+                        }
+                    } else {
+                        // forward the message for processing
+                        data.entity.getService().mqttUpdate(payload, data);
                     }
-                } else {
-                    // forward the message for processing
-                    data.entity.getService().mqttUpdate(payload, data);
                 }
-            }
-            if (topic.endsWith("LWT")) {
-                lwts.add(topic);
-                log.info("[{}]: DISCOVERY: LWT from an unknown device {}", entityID, topic);
-                for (String pattern : entity.getPatterns()) {
-                    Matcher matcher = Pattern.compile(pattern.replace("%topic%", "(?<topic>.*)")
-                                                             .replace("%prefix%", "(?<prefix>.*?)") + ".*$").matcher(topic);
-                    if (matcher.matches()) {
-                        String possible_topic = matcher.group("topic");
-                        if (!possible_topic.equals("tele") && !possible_topic.equals("stat")) {
-                            String possible_topic_cmnd = (pattern.replace("%prefix%", "cmnd").replace("%topic%", possible_topic) + "FullTopic");
-                            log.info("[{}]: DISCOVERY: Asking an unknown device for FullTopic at {}", entityID, possible_topic_cmnd);
-                            mqttEntityService.publish(possible_topic_cmnd);
+                if (topic.endsWith("LWT")) {
+                    lwts.add(topic);
+                    log.info("[{}]: DISCOVERY: LWT from an unknown device {}", entityID, topic);
+                    for (String pattern : entity.getPatterns()) {
+                        Matcher matcher = Pattern.compile(pattern.replace("%topic%", "(?<topic>.*)")
+                                                                 .replace("%prefix%", "(?<prefix>.*?)") + ".*$").matcher(topic);
+                        if (matcher.matches()) {
+                            String possible_topic = matcher.group("topic");
+                            if (!possible_topic.equals("tele") && !possible_topic.equals("stat")) {
+                                String possible_topic_cmnd = (pattern.replace("%prefix%", "cmnd").replace("%topic%", possible_topic) + "FullTopic");
+                                log.info("[{}]: DISCOVERY: Asking an unknown device for FullTopic at {}", entityID, possible_topic_cmnd);
+                                mqttEntityService.publish(possible_topic_cmnd);
+                            }
                         }
                     }
-                }
-            } else if (topic.endsWith("RESULT") || topic.endsWith("FULLTOPIC")) {
-                if (!payload.has("FullTopic")) {
-                    return;
-                }
-                String full_topic = payload.get("FullTopic").asText();
-                ParsedTopic parsed = parseTopic(full_topic, topic);
-                if (parsed == null) {
-                    return;
-                }
-                log.info("[{}]: DISCOVERY: topic {} is matched by fulltopic {}", entityID, topic, full_topic);
-                MatchDeviceData deviceData = findDevice(parsed.topic);
-                if (deviceData != null) {
-                    if (!deviceData.entity.getFullTopic().equals(full_topic)) {
-                        context.db().save(deviceData.entity.setFullTopic(full_topic));
+                } else if (topic.endsWith("RESULT") || topic.endsWith("FULLTOPIC")) {
+                    if (!payload.has("FullTopic")) {
+                        return;
                     }
-                    deviceData.entity.getService().put("FullTopic", full_topic);
-                } else {
-                    log.info("[{}]: DISCOVERY: Discovered topic={} with fulltopic={}", entityID, parsed.topic, full_topic);
-                    TasmotaDeviceEntity device = new TasmotaDeviceEntity();
-                    device.setIeeeAddress(parsed.topic);
-                    device.setFullTopic(full_topic);
-                    existedDevices.put(parsed.topic, context.db().save(device));
-                    log.info("[{}]: DISCOVERY: Sending initial query to topic {}", entityID, parsed.topic);
-                    initialQuery(device);
-                    String tele_topic = tele_topic(device, "LWT");
-                    lwts.remove(tele_topic);
-                    device.getService().put("LWT", "Online");
+                    String full_topic = payload.get("FullTopic").asText();
+                    ParsedTopic parsed = parseTopic(full_topic, topic);
+                    if (parsed == null) {
+                        return;
+                    }
+                    log.info("[{}]: DISCOVERY: topic {} is matched by fulltopic {}", entityID, topic, full_topic);
+                    MatchDeviceData deviceData = findDevice(parsed.topic);
+                    if (deviceData != null) {
+                        if (!deviceData.entity.getFullTopic().equals(full_topic)) {
+                            context.db().save(deviceData.entity.setFullTopic(full_topic));
+                        }
+                        deviceData.entity.getService().put("FullTopic", full_topic);
+                    } else {
+                        log.info("[{}]: DISCOVERY: Discovered topic={} with fulltopic={}", entityID, parsed.topic, full_topic);
+                        TasmotaDeviceEntity device = new TasmotaDeviceEntity();
+                        device.setIeeeAddress(parsed.topic);
+                        device.setFullTopic(full_topic);
+                        existedDevices.put(parsed.topic, context.db().save(device));
+                        log.info("[{}]: DISCOVERY: Sending initial query to topic {}", entityID, parsed.topic);
+                        initialQuery(device);
+                        String tele_topic = tele_topic(device, "LWT");
+                        lwts.remove(tele_topic);
+                        device.getService().put("LWT", "Online");
+                    }
                 }
-            }
-        });
+            });
         initialize();
     }
 
@@ -209,27 +205,6 @@ public class TasmotaProjectService extends ServiceInstance<TasmotaProjectEntity>
             return new MatchDeviceData(entity, parsedTopic.reply(), parsedTopic.prefix());
         }
         return null;
-    }
-
-    private void addMqttTopicListener(ThrowingBiConsumer<String, ObjectNode, Exception> handler) {
-        mqttEntityService.addListener(Set.of("tele/#", "stat/#", "cmnd/#", "+/tele/#", "+/stat/#", "+/cmnd/#"),
-            "tasmota", (realTopic, value) -> {
-                log.log(Level.INFO, "[{}]: Tasmota {}: {}", entityID, realTopic, value);
-                String payload = value == null ? "" : value;
-                if (!payload.isEmpty()) {
-                    ObjectNode node;
-                    try {
-                        node = OBJECT_MAPPER.readValue(payload, ObjectNode.class);
-                    } catch (Exception ex) {
-                        node = OBJECT_MAPPER.createObjectNode().put("raw", payload);
-                    }
-                    try {
-                        handler.accept(realTopic, node);
-                    } catch (Exception ex) {
-                        log.error("[{}]: Unable to handle mqtt payload: {}. Msg: {}", entityID, payload, getErrorMessage(ex));
-                    }
-                }
-            });
     }
 
     public record MatchDeviceData(TasmotaDeviceEntity entity, String reply, String prefix) {}
