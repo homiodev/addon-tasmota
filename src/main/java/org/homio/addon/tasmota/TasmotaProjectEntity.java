@@ -10,18 +10,18 @@ import org.homio.api.Context;
 import org.homio.api.ContextService;
 import org.homio.api.ContextService.MQTTEntityService;
 import org.homio.api.entity.HasStatusAndMsg;
+import org.homio.api.entity.device.DeviceBaseEntity;
 import org.homio.api.entity.log.HasEntityLog;
-import org.homio.api.entity.types.MicroControllerBaseEntity;
-import org.homio.api.entity.types.StorageEntity;
 import org.homio.api.service.EntityService;
-import org.homio.api.ui.UISidebarChildren;
 import org.homio.api.ui.field.UIField;
-import org.homio.api.ui.field.UIFieldLinkToEntity;
+import org.homio.api.ui.field.UIFieldLinkToRoute;
 import org.homio.api.ui.field.UIFieldType;
 import org.homio.api.ui.field.color.UIFieldColorRef;
 import org.homio.api.ui.field.inline.UIFieldInlineEntities;
 import org.homio.api.ui.field.inline.UIFieldInlineEntityWidth;
 import org.homio.api.ui.field.selection.UIFieldEntityTypeSelection;
+import org.homio.api.ui.route.UIRouteMicroController;
+import org.homio.api.ui.route.UIRouteStorage;
 import org.homio.api.util.DataSourceUtil;
 import org.homio.api.util.DataSourceUtil.SelectionSource;
 import org.jetbrains.annotations.NotNull;
@@ -39,8 +39,8 @@ import static org.homio.addon.tasmota.TasmotaEntrypoint.TASMOTA_ICON;
 @SuppressWarnings({"JpaAttributeTypeInspection", "JpaAttributeMemberSignatureInspection"})
 @Log4j2
 @Entity
-@UISidebarChildren(icon = TASMOTA_ICON, color = TASMOTA_COLOR)
-public class TasmotaProjectEntity extends MicroControllerBaseEntity
+@UIRouteMicroController(icon = TASMOTA_ICON, color = TASMOTA_COLOR)
+public class TasmotaProjectEntity extends DeviceBaseEntity
   implements EntityService<TasmotaProjectService>,
   HasStatusAndMsg, HasEntityLog {
 
@@ -66,7 +66,7 @@ public class TasmotaProjectEntity extends MicroControllerBaseEntity
 
   @UIField(order = 20, required = true, inlineEditWhenEmpty = true)
   @UIFieldEntityTypeSelection(type = ContextService.MQTT_SERVICE)
-  @UIFieldLinkToEntity(value = StorageEntity.class, applyTitle = true)
+  @UIFieldLinkToRoute(rawRoute = UIRouteStorage.ROUTE, applyTitle = true)
   public String getMqttEntity() {
     return getJsonData("mqtt");
   }
@@ -115,11 +115,6 @@ public class TasmotaProjectEntity extends MicroControllerBaseEntity
   }
 
   @Override
-  public @NotNull Class<TasmotaProjectService> getEntityServiceItemClass() {
-    return TasmotaProjectService.class;
-  }
-
-  @Override
   @SneakyThrows
   public @NotNull TasmotaProjectService createService(@NotNull Context context) {
     return new TasmotaProjectService(context, this);
@@ -146,7 +141,7 @@ public class TasmotaProjectEntity extends MicroControllerBaseEntity
 
     @UIField(order = 1)
     @UIFieldInlineEntityWidth(35)
-    @UIFieldLinkToEntity(TasmotaDeviceEntity.class)
+    @UIFieldLinkToRoute(TasmotaDeviceEntity.class)
     private String ieeeAddress;
 
     @UIField(order = 2)

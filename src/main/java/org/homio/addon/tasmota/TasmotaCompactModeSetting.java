@@ -5,12 +5,13 @@ import org.homio.api.entity.BaseEntity;
 import org.homio.api.model.Icon;
 import org.homio.api.setting.SettingPluginToggle;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class TasmotaCompactModeSetting implements SettingPluginToggle {
 
   @Override
-  public Class<? extends BaseEntity> availableForEntity() {
-    return TasmotaDeviceEntity.class;
+  public @Nullable String availableForRoute() {
+    return TasmotaDeviceEntity.PREFIX;
   }
 
   @Override

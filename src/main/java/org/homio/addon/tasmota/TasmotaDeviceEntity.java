@@ -21,8 +21,6 @@ import org.homio.api.model.device.ConfigDeviceDefinition;
 import org.homio.api.model.endpoint.DeviceEndpoint;
 import org.homio.api.service.EntityService;
 import org.homio.api.ui.UI.Color;
-import org.homio.api.ui.UISidebarMenu;
-import org.homio.api.ui.UISidebarMenu.TopSidebarMenu;
 import org.homio.api.ui.field.UIField;
 import org.homio.api.ui.field.UIFieldGroup;
 import org.homio.api.ui.field.UIFieldIgnore;
@@ -31,6 +29,7 @@ import org.homio.api.ui.field.UIFieldType;
 import org.homio.api.ui.field.action.UIContextMenuAction;
 import org.homio.api.ui.field.action.v1.UIInputBuilder;
 import org.homio.api.ui.field.condition.UIFieldShowOnCondition;
+import org.homio.api.ui.route.UIRouteMenu;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -50,12 +49,12 @@ import static org.homio.addon.tasmota.TasmotaEntrypoint.TASMOTA_ICON;
 @Setter
 @Entity
 @NoArgsConstructor
-@UISidebarMenu(icon = TASMOTA_ICON,
-  order = 150,
-  bg = TASMOTA_COLOR,
-  parent = TopSidebarMenu.DEVICES,
-  overridePath = "tasmota",
-  filter = {"*:fas fa-filter:#8DBA73", "status:fas fa-heart-crack:#C452C4"},
+@UIRouteMenu(icon = TASMOTA_ICON,
+            order = 150,
+            color = TASMOTA_COLOR,
+            parent = UIRouteMenu.TopSidebarMenu.DEVICES,
+            overridePath = TasmotaDeviceEntity.PREFIX,
+            filter = {"*:fas fa-filter:#8DBA73", "status:fas fa-heart-crack:#C452C4"},
   sort = {
     "name~#FF9800:fas fa-arrow-up-a-z:fas fa-arrow-down-z-a",
     "status~#7EAD28:fas fa-turn-up:fas fa-turn-down",
@@ -144,11 +143,6 @@ public final class TasmotaDeviceEntity extends DeviceBaseEntity implements
   @Override
   public long getEntityServiceHashCode() {
     return Objects.hashCode(getIeeeAddress());
-  }
-
-  @Override
-  public @NotNull Class<TasmotaDeviceService> getEntityServiceItemClass() {
-    return TasmotaDeviceService.class;
   }
 
   @Override
